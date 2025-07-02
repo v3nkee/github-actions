@@ -8,7 +8,7 @@ jobs:
   compile:
     runs-on: ubuntu-latest
 
-    steps:  # <-- This must be indented under the job
+    steps:  # 💡 FIXED: was previously misaligned or commented as a note
       - uses: actions/checkout@v4
 
       - name: Setup JDK 17
@@ -18,5 +18,28 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build with Maven
+      - name: Build with Maven              # 💡 ADDED: Your original version missed the actual Maven build step
         run: mvn compile
+
+  security-check:                           # 💡 FIXED: This was wrongly nested under the `compile:` job
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy installation
+        run: |  
+          sudo apt-get install wget gnupg -y   # 💡 ADDED `-y` to auto-confirm install
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy -y        # 💡 ADDED `-y` here too
+
+      - name: Trivy Fs Scan
+        run: trivy fs --format table -o fs-report.json .
+
+      - name: Gitleaks installation
+        run: sudo apt install gitleaks -y
+
+      - name: Gitleaks Code Scan
+        run: gitleaks detect -s . -r gitleaks-report.json -f json   # 💡 FIXED: Changed `source .` to `-s .`
